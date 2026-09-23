@@ -2,13 +2,15 @@
 
 ## Starting a session
 
-1. Open RunOnSleep and click its robot icon in the menu bar.
+1. Open RunOnSleep to see its controls and current protection status. The first launch also explains where to find the robot icon in the menu bar.
 2. Choose Background agents or Computer use, a duration, and a battery cutoff.
 3. For closed-lid background work, install the helper using the app's button, then select Closed lid · experimental. Read the first-use heat notice.
 4. Click Start protection. An ACTIVE session, the observed global flag, and experimental capability are three different indicators.
 5. Stop protection when finished. Quit also asks the helper to stop. If the app disappears, the helper expires its lease within 45 seconds plus at most one five-second polling interval.
 
 Keep the Mac on a hard, ventilated surface. Never run it closed in a bag, sleeve, drawer, or enclosure. A coarse OS thermal signal cannot guarantee safe temperatures. RunOnSleep ends protection at serious heat with a closed or unknown lid, or critical heat with any lid state. It cannot stop an agent's CPU work directly.
+
+Opening the app does not start protection. Closing the controls window leaves the app and any active session running; use Stop protection or Quit to end the session. Click the menu-bar robot for quick access, or open the app again to bring back the window. Optional launch at login stays quiet and starts inactive.
 
 Battery warning starts at 20% (or five points above a higher cutoff). Default cutoff is 15%, adjustable from 5–50%. Unknown battery level while unplugged also ends protection. Thermal/battery stops never automatically restart.
 

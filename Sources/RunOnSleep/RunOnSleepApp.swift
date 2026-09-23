@@ -4,23 +4,39 @@ import RunOnSleepCore
 
 @main
 struct RunOnSleepApp: App {
-    @StateObject private var model = AppModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     var body: some Scene {
         MenuBarExtra {
-            ControlPanel(model: model)
+            ControlPanel(model: appDelegate.model)
         } label: {
-            Image(nsImage: model.connectionUncertain ? MenuBarIcon.unknown : (model.active ? MenuBarIcon.active : MenuBarIcon.inactive))
-                .renderingMode(.template)
-                .accessibilityLabel(model.connectionUncertain ? "RunOnSleep status unknown" : (model.active ? "RunOnSleep session active" : "RunOnSleep inactive"))
-                .help(model.connectionUncertain ? "RunOnSleep — connection lost" : (model.active ? "RunOnSleep — protection active" : "RunOnSleep — inactive"))
+            MenuBarStatusLabel(model: appDelegate.model)
         }
         .menuBarExtraStyle(.window)
     }
 }
 
+private struct MenuBarStatusLabel: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        Image(nsImage: model.connectionUncertain ? MenuBarIcon.unknown : (model.active ? MenuBarIcon.active : MenuBarIcon.inactive))
+            .renderingMode(.template)
+            .accessibilityLabel(model.connectionUncertain ? "RunOnSleep status unknown" : (model.active ? "RunOnSleep session active" : "RunOnSleep inactive"))
+            .help(model.connectionUncertain ? "RunOnSleep — connection lost" : (model.active ? "RunOnSleep — protection active" : "RunOnSleep — inactive"))
+    }
+}
+
 struct ControlPanel: View {
     @ObservedObject var model: AppModel
+    var isLaunchPanel = false
+    var showsMenuBarHint = false
+    var hidePanel: (() -> Void)?
     @State private var showDiagnostics = false
+    private var protectionSummary: String {
+        if model.connectionUncertain { return "Protection status is unknown. Check the connection details below." }
+        guard model.status != nil else { return "Checking protection status…" }
+        return model.active ? "Sleep protection is active." : "Sleep protection is off. Start a session when you're ready."
+    }
     private var global: String {
         switch model.status?.environment.sleepDisabled {
         case true?: return "Enabled"
@@ -36,13 +52,32 @@ struct ControlPanel: View {
                     .resizable().interpolation(.high).frame(width: 36, height: 36)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("RunOnSleep").font(.headline)
+                    Text(isLaunchPanel ? "RunOnSleep is ready" : "RunOnSleep").font(.headline)
                     Text("Keep your agents working").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text(model.connectionUncertain ? "UNKNOWN" : (model.active ? "ACTIVE" : "INACTIVE"))
+                Text(model.connectionUncertain ? "UNKNOWN" : (model.status == nil ? "CHECKING" : (model.active ? "ACTIVE" : "INACTIVE")))
                     .font(.caption2.bold()).padding(6)
                     .background(model.active ? Color.teal.opacity(0.15) : Color.gray.opacity(0.12), in: Capsule())
+            }
+            if isLaunchPanel {
+                Text(protectionSummary)
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if showsMenuBarHint {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(nsImage: MenuBarIcon.inactive).renderingMode(.template)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Find me in your menu bar").font(.caption.bold())
+                        Text("Click the robot icon any time to open these controls. Closing this window keeps RunOnSleep running.")
+                            .font(.caption)
+                    }
+                }
+                .foregroundStyle(.secondary)
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
             }
             Divider()
             if model.active {
@@ -74,7 +109,8 @@ struct ControlPanel: View {
             Button(action: { if model.active { model.stop() } else { model.start() } }) {
                 Text(model.active ? "Stop protection" : "Start protection").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent).tint(.teal).controlSize(.large).disabled(model.busy)
+            .buttonStyle(.borderedProminent).tint(.teal).controlSize(.large)
+            .disabled(model.busy || model.status == nil || (model.connectionUncertain && !model.active))
 
             if let interruption = model.interruption {
                 Label(interruption, systemImage: "desktopcomputer.trianglebadge.exclamationmark").foregroundStyle(.orange).font(.caption)
@@ -119,6 +155,9 @@ struct ControlPanel: View {
             HStack {
                 Text("v\(BuildInfo.version)").font(.caption2).foregroundStyle(.tertiary)
                 Spacer()
+                if let hidePanel {
+                    Button("Hide window", action: hidePanel).keyboardShortcut(.cancelAction)
+                }
                 Button("Quit", action: model.quit).disabled(model.busy)
             }
         }
