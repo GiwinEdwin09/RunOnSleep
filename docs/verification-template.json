@@ -1,0 +1,25 @@
+{
+  "configuration": {
+    "hardware": "REPLACE_FROM_DIAGNOSTICS",
+    "osBuild": "REPLACE_FROM_DIAGNOSTICS",
+    "appVersion": "0.1.0",
+    "helperVersion": "0.1.0"
+  },
+  "testedAt": "2026-09-22T00:00:00Z",
+  "charger": {
+    "durationSeconds": 0,
+    "taskProgressConfirmed": false,
+    "sleepLogReviewed": false,
+    "unexpectedSleep": true,
+    "powerTransitionsPassed": false,
+    "evidence": ""
+  },
+  "battery": {
+    "durationSeconds": 0,
+    "taskProgressConfirmed": false,
+    "sleepLogReviewed": false,
+    "unexpectedSleep": true,
+    "powerTransitionsPassed": false,
+    "evidence": ""
+  }
+}

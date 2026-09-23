@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+STATE='/Library/Application Support/RunOnSleep'
+OWNER_UID=$(/usr/bin/stat -f %u /dev/console)
+[[ "$OWNER_UID" =~ ^[0-9]+$ && "$OWNER_UID" -ge 501 ]] || exit 1
+/usr/bin/install -d -o root -g wheel -m 700 "$STATE"
+if [[ ! -e "$STATE/owner.json" ]]; then
+    umask 077
+    printf '{"uid":%s}\n' "$OWNER_UID" > "$STATE/owner.json"
+fi
+/usr/sbin/chown root:wheel "$STATE/owner.json" /Library/PrivilegedHelperTools/com.runonsleep.helper /Library/LaunchDaemons/com.runonsleep.helper.plist
+/bin/chmod 600 "$STATE/owner.json"
+/bin/chmod 755 /Library/PrivilegedHelperTools/com.runonsleep.helper
+/bin/chmod 644 /Library/LaunchDaemons/com.runonsleep.helper.plist
+/bin/launchctl enable system/com.runonsleep.helper
+/bin/launchctl bootstrap system /Library/LaunchDaemons/com.runonsleep.helper.plist
+echo 'Helper installed. Open RunOnSleep to start a session; installation does not disable sleep.'

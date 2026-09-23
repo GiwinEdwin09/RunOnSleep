@@ -1,0 +1,31 @@
+#!/bin/bash
+set -euo pipefail
+[[ "${3:-/}" == / ]] || { echo 'Install only on the running system volume.' >&2; exit 1; }
+for item in /Library/PrivilegedHelperTools /Library/LaunchDaemons '/Library/Application Support/RunOnSleep'; do
+    [[ ! -L "$item" ]] || { echo "Refusing symlink: $item" >&2; exit 1; }
+done
+OWNER_UID=$(/usr/bin/stat -f %u /dev/console)
+[[ "$OWNER_UID" =~ ^[0-9]+$ && "$OWNER_UID" -ge 501 ]] || { echo 'Install from a logged-in user desktop.' >&2; exit 1; }
+STATE='/Library/Application Support/RunOnSleep'
+if [[ -e "$STATE" ]]; then
+    [[ "$(/usr/bin/stat -f %u "$STATE")" == 0 ]] || { echo 'State directory is not root owned.' >&2; exit 1; }
+    STATE_MODE=$(/usr/bin/stat -f %OLp "$STATE")
+    (( (8#$STATE_MODE & 8#022) == 0 )) || { echo 'State directory is writable by another user.' >&2; exit 1; }
+    [[ ! -L "$STATE/owner.json" ]] || exit 1
+    if [[ -f "$STATE/owner.json" ]]; then
+        EXISTING_UID=$(/usr/bin/plutil -extract uid raw -o - "$STATE/owner.json")
+        [[ "$OWNER_UID" == "$EXISTING_UID" ]] || { echo 'Helper belongs to another user; uninstall it first.' >&2; exit 1; }
+    fi
+fi
+if /bin/launchctl print system/com.runonsleep.helper >/dev/null 2>&1; then
+    /bin/launchctl bootout system/com.runonsleep.helper
+fi
+# Wait for old daemon cleanup and lock release before replacing its executable.
+if [[ -x /Library/PrivilegedHelperTools/com.runonsleep.helper && -f "$STATE/owner.json" ]]; then
+    for attempt in 1 2 3 4 5; do
+        if /Library/PrivilegedHelperTools/com.runonsleep.helper --recover-only; then exit 0; fi
+        /bin/sleep 1
+    done
+    echo 'Recovery needs review. Helper update stopped; see the recovery guide.' >&2
+    exit 1
+fi
